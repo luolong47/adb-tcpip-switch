@@ -46,6 +46,30 @@ status_json() {
         "$ST" "$PORT" "$LIP" "$LS" "$LIP" "$PORT"
 }
 
+# Write a live status badge into module.prop's description, so the Manager
+# module list shows current state without opening the WebUI (same trick
+# ReZygisk uses with its "[Monitor: ...]" badge). Value must stay sed-safe:
+# no '|', '&' or backslash.
+update_desc() {
+    [ -f "$MODDIR/module.prop" ] || return 0
+    ST=$(cat "$STATE_FILE" 2>/dev/null)
+    [ -n "$ST" ] || ST=off
+    if [ "$ST" = "on" ]; then
+        if is_listening; then
+            BADGE="[🟢 ON · ✅ :${PORT} listening]"
+        else
+            BADGE="[🟢 ON · ⏳ :${PORT} not listening yet]"
+        fi
+    else
+        BADGE="[⚫ OFF · :${PORT} closed]"
+    fi
+    NEW="description=${BADGE} WebUI switch for adb wireless debugging. TCP listens only while enabled."
+    # write only when changed, so a periodic sync loop causes no flash wear
+    CUR=$(sed -n 's/^description=//p' "$MODDIR/module.prop" 2>/dev/null)
+    [ "$CUR" = "${NEW#description=}" ] && return 0
+    sed -i "s|^description=.*|${NEW}|" "$MODDIR/module.prop"
+}
+
 restart_adbd() {
     stop adbd
     sleep 1
@@ -59,6 +83,7 @@ case "$1" in
         setprop service.adb.tcp.port "$PORT"
         restart_adbd
         log "on port=$PORT"
+        update_desc
         status_json
         ;;
     off)
@@ -66,6 +91,7 @@ case "$1" in
         setprop service.adb.tcp.port -1
         restart_adbd
         log "off"
+        update_desc
         status_json
         ;;
     toggle)
@@ -93,7 +119,11 @@ case "$1" in
             restart_adbd
         fi
         log "setport $NP"
+        update_desc
         status_json
+        ;;
+    syncdesc)
+        update_desc
         ;;
     status | *)
         status_json

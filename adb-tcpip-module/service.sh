@@ -23,4 +23,11 @@ MODDIR=${0%/*}
     if [ "$(cat "$MODDIR/state" 2>/dev/null)" = "on" ]; then
         sh "$MODDIR/ctl.sh" on > /data/local/tmp/adb_tcpip_sw_boot.log 2>&1
     fi
+
+    # keep the Manager module-list badge in sync (update_desc writes only
+    # when the text actually changed, so polling is free)
+    while true; do
+        sleep 30
+        sh "$MODDIR/ctl.sh" syncdesc > /dev/null 2>&1
+    done
 ) &
