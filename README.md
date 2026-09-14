@@ -1,5 +1,7 @@
 # ADB TCP/IP Switch
 
+**https://github.com/luolong47/adb-tcpip-switch**
+
 给 Redmi K60（APatch root）做的 adb 无线调试开关模块：**开关打开时 adbd 才监听 TCP 5555，关闭即彻底停止监听**。带一个在 APatch Manager 里点开的 WebUI 页面，和 Zygisk Next 那种一样。
 
 ## 为什么不是裸脚本
