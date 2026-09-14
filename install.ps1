@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     1) 连上手机的 adb
-    2) 把 dist/adb_tcpip_sw-v1.0.zip 推到手机
+    2) 把 dist/adb_tcpip_sw-v1.0.1.zip 推到手机
     3) 优先用 `apd module install` 装（APatch 命令行安装）
        若 apd 不支持该子命令，会提示改用 APatch Manager 图形界面本地安装
     4) 卸载时删除模块目录并把 adbd 恢复成仅 USB
@@ -30,8 +30,8 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $Mod    = "adb_tcpip_sw"
-$Zip    = Join-Path $PSScriptRoot "dist\adb_tcpip_sw-v1.0.0.zip"
-$Remote = "/sdcard/Download/adb_tcpip_sw-v1.0.0.zip"
+$Zip    = Join-Path $PSScriptRoot "dist\adb_tcpip_sw-v1.0.1.zip"
+$Remote = "/sdcard/Download/adb_tcpip_sw-v1.0.1.zip"
 
 if (-not (Get-Command adb -ErrorAction SilentlyContinue)) {
     Write-Host "PATH 里没有 adb。" -ForegroundColor Red

@@ -3,7 +3,7 @@
 """
 打包 APatch / KernelSU / Magisk 通用的可刷模块 zip。
 
-产物: dist/adb_tcpip_sw-v1.0.zip
+产物: dist/adb_tcpip_sw-v1.0.1.zip
 用法: python build.py
 """
 import os
@@ -12,7 +12,8 @@ import zipfile
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, "adb-tcpip-module")
 OUT_DIR = os.path.join(ROOT, "dist")
-OUT = os.path.join(OUT_DIR, "adb_tcpip_sw-v1.0.0.zip")
+VERSION = os.environ.get("VERSION", "v1.0.1")
+OUT = os.path.join(OUT_DIR, "adb_tcpip_sw-%s.zip" % VERSION)
 
 # 兜底用：adb-tcpip-module/customize.sh 不存在时的默认内容
 CUSTOMIZE_SH = """\

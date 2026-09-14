@@ -23,7 +23,7 @@ adb-tcpip-module/            <- 模块本体，会落到 /data/adb/modules/adb_t
 ├── port                     端口号持久化（默认 5555）
 └── webroot/index.html       WebUI 页面
 
-build.py                     <- 打包脚本，产物 dist/adb_tcpip_sw-v1.0.0.zip
+build.py                     <- 打包脚本，产物 dist/adb_tcpip_sw-v1.0.1.zip
 install.ps1                  <- PC 端安装 / 卸载 / 只推包
 install-on-device.sh         <- （备用）不走 zip 时的手工 root 安装器
 ```
@@ -31,7 +31,7 @@ install-on-device.sh         <- （备用）不走 zip 时的手工 root 安装�
 ## 产物：可刷 zip
 
 ```bash
-python build.py      # -> dist/adb_tcpip_sw-v1.0.0.zip
+python build.py      # -> dist/adb_tcpip_sw-v1.0.1.zip
 ```
 
 zip 结构（标准模块格式，APatch / KernelSU / Magisk 通用，`.sh` 权限位已写进 zip）：
@@ -57,13 +57,13 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 **2) 只推包，Manager 手动刷**（最稳）
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -PushOnly
-# 然后 APatch Manager -> 模块 -> 本地安装 -> 选 /sdcard/Download/adb_tcpip_sw-v1.0.0.zip
+# 然后 APatch Manager -> 模块 -> 本地安装 -> 选 /sdcard/Download/adb_tcpip_sw-v1.0.1.zip
 ```
 
 **3) 纯手工**
 ```bash
-adb push dist/adb_tcpip_sw-v1.0.0.zip /sdcard/Download/
-adb shell su -c "apd module install /sdcard/Download/adb_tcpip_sw-v1.0.0.zip"
+adb push dist/adb_tcpip_sw-v1.0.1.zip /sdcard/Download/
+adb shell su -c "apd module install /sdcard/Download/adb_tcpip_sw-v1.0.1.zip"
 ```
 
 安装时 `customize.sh` 会兜底修权限，并顺手删掉之前那个
