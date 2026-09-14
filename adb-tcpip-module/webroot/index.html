@@ -83,7 +83,41 @@
     }
     .sw.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
     .sw.on .knob { transform: translateX(24px); }
-    .sw:disabled { opacity: .45; cursor: default; }
+    .sw:disabled { cursor: default; }
+
+    /* busy feedback: knob keeps its position, a ring spins inside it */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin {
+        display: none;
+        width: 16px; height: 16px;
+        border-radius: 50%;
+        border: 2px solid rgba(128, 128, 128, .3);
+        border-top-color: var(--accent-2);
+        animation: spin .7s linear infinite;
+    }
+    .busy .spin { display: block; }
+
+    .knob { display: flex; align-items: center; justify-content: center; }
+
+    .bar {
+        position: fixed; top: 0; left: 0; right: 0; height: 3px;
+        overflow: hidden; z-index: 50;
+        opacity: 0; transition: opacity .2s ease;
+        pointer-events: none;
+    }
+    .bar.active { opacity: 1; }
+    .bar i {
+        display: block; width: 35%; height: 100%;
+        background: var(--accent);
+        animation: slide 1.1s ease-in-out infinite;
+    }
+    @keyframes slide {
+        0% { transform: translateX(-110%); }
+        100% { transform: translateX(400%); }
+    }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 76px; }
+    .btn:disabled { opacity: .6; cursor: default; }
 
     .cmd {
         display: flex; align-items: center; gap: 10px;
@@ -178,6 +212,7 @@
 </style>
 </head>
 <body>
+<div class="bar" id="bar"><i></i></div>
 <div class="page">
     <header>
         <h1>ADB 无线调试</h1>
@@ -195,7 +230,7 @@
                 <p class="sub" id="swSub">读取中…</p>
             </div>
             <button class="sw" id="sw" role="switch" aria-checked="false" aria-label="切换监听">
-                <span class="knob"></span>
+                <span class="knob"><span class="spin"></span></span>
             </button>
         </div>
         <div class="cmd" id="cmdBox">
@@ -332,6 +367,31 @@
         el.className = "msg" + (kind ? " " + kind : "");
     }
 
+    // ---- busy state: top progress bar + spinner inside the switch knob ----
+    var bar = $("bar"), busyDepth = 0;
+
+    function setBusy(on) {
+        busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
+        var active = busyDepth > 0;
+        if (active) bar.classList.add("active");
+        else bar.classList.remove("active");
+        sw.classList.toggle("busy", active);
+    }
+
+    function btnBusy(btn, on) {
+        if (on) {
+            if (btn.dataset.label == null) btn.dataset.label = btn.textContent;
+            btn.textContent = "";
+            var s = document.createElement("span");
+            s.className = "spin";
+            btn.appendChild(s);
+            btn.disabled = true;
+        } else {
+            if (btn.dataset.label != null) btn.textContent = btn.dataset.label;
+            btn.disabled = false;
+        }
+    }
+
     function render(s) {
         cur = s;
         var on = s.state === "on";
@@ -356,10 +416,12 @@
         if (document.activeElement !== $("portInput")) $("portInput").value = s.port;
     }
 
-    function run(cmd, okText) {
+    function run(cmd, okText, pendingText) {
         busy = true;
         sw.disabled = true;
-        setMsg(msg, "执行中…");
+        setBusy(true);
+        $("swSub").textContent = pendingText || "正在切换…";
+        setMsg(msg, "");
         return sh(cmd).then(function (res) {
             var s = parseStatus(res);
             render(s);
@@ -370,6 +432,7 @@
         }).then(function () {
             busy = false;
             sw.disabled = false;
+            setBusy(false);
         });
     }
 
@@ -377,7 +440,8 @@
         if (busy) return;
         var next = !(cur && cur.state === "on");
         run(CTL + " " + (next ? "on" : "off"),
-            next ? "已开启：" + (cur ? cur.cmd : "") : "已关闭，端口不再监听");
+            next ? "已开启：" + (cur ? cur.cmd : "") : "已关闭，端口不再监听",
+            next ? "正在开启监听…" : "正在停止监听…");
     });
 
     $("copyBtn").addEventListener("click", function () {
@@ -409,8 +473,10 @@
         var p = $("portInput").value.trim();
         if (!/^\d+$/.test(p)) { setMsg($("portMsg"), "端口必须是数字", "err"); return; }
         if (+p < 1024 || +p > 65535) { setMsg($("portMsg"), "范围 1024–65535", "err"); return; }
+        var btn = $("saveBtn");
         setMsg($("portMsg"), "保存中…");
         busy = true; sw.disabled = true;
+        setBusy(true); btnBusy(btn, true);
         sh(CTL + " setport " + p).then(function (res) {
             var s = parseStatus(res);
             render(s);
@@ -418,25 +484,36 @@
             $("log").textContent = (res.stdout || "") + (res.stderr || "");
         }).catch(function (e) {
             setMsg($("portMsg"), "失败：" + (e && e.message ? e.message : e), "err");
-        }).then(function () { busy = false; sw.disabled = false; });
+        }).then(function () {
+            busy = false; sw.disabled = false;
+            setBusy(false); btnBusy(btn, false);
+        });
     });
 
     $("refreshBtn").addEventListener("click", function () {
         if (busy) return;
+        var btn = $("refreshBtn");
         busy = true;
+        setBusy(true); btnBusy(btn, true);
         setMsg(msg, "刷新中…");
         sh(CTL + " status").then(function (res) {
             render(parseStatus(res));
             setMsg(msg, "");
         }).catch(function (e) {
             setMsg(msg, "失败：" + (e && e.message ? e.message : e), "err");
-        }).then(function () { busy = false; });
+        }).then(function () {
+            busy = false; setBusy(false); btnBusy(btn, false);
+        });
     });
 
+    // initial load also gets the progress bar, so a slow first read feels alive
+    setBusy(true);
     sh(CTL + " status").then(function (res) {
         render(parseStatus(res));
     }).catch(function (e) {
         setMsg(msg, "读取状态失败：" + (e && e.message ? e.message : e), "err");
+    }).then(function () {
+        setBusy(false);
     });
 })();
 </script>

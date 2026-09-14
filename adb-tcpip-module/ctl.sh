@@ -66,11 +66,23 @@ update_desc() {
     sed -i "s|^description=.*|${NEW}|" "$MODDIR/module.prop"
 }
 
+# `ctl.restart` is handled by init asynchronously, so poll init.svc.adbd and
+# return as soon as adbd is back instead of sleeping a fixed 2s.
+# (Never `stop adbd; start adbd` here: it is slower and, when run from an
+# adb shell, kills the shell's own transport.)
 restart_adbd() {
-    stop adbd
-    sleep 1
-    start adbd
-    sleep 1
+    setprop ctl.restart adbd
+    sleep 0.4
+    i=0
+    while [ $i -lt 30 ]; do
+        if [ "$(getprop init.svc.adbd)" = "running" ]; then
+            sleep 0.2
+            return 0
+        fi
+        sleep 0.2
+        i=$((i + 1))
+    done
+    return 0
 }
 
 case "$1" in
