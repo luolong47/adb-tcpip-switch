@@ -93,4 +93,4 @@ if ($modHelp -match 'install') {
 
 Write-Host ""
 Write-Host "装完在 APatch Manager 里确认 $Mod 已启用，重启一次手机。"
-Write-Host "之后在模块详情页点开 WebUI（或 Action 按钮）就能用开关控制 5555。" -ForegroundColor Cyan
+Write-Host "之后在模块详情页点开 WebUI 就能用开关控制 5555。" -ForegroundColor Cyan

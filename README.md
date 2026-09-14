@@ -18,7 +18,6 @@ adb-tcpip-module/            <- 模块本体，会落到 /data/adb/modules/adb_t
 ├── module.prop              模块信息
 ├── ctl.sh                   控制脚本 on/off/toggle/status/setport，输出 JSON
 ├── service.sh               开机钩子：按上次开关状态恢复（后台执行，不卡开机）
-├── action.sh                Manager 里点 Action 时切换开关
 ├── uninstall.sh             卸载时把 adbd 恢复成 USB
 ├── state                    开关状态持久化（on/off，首次运行自动生成）
 ├── port                     端口号持久化（默认 5555）
@@ -40,7 +39,7 @@ zip 结构（标准模块格式，APatch / KernelSU / Magisk 通用，`.sh` 权�
 ```
 META-INF/com/google/android/update-binary   0755  委托给 apd/ksud/magisk 的 shim
 META-INF/com/google/android/updater-script  0644  #MAGISK
-module.prop  ctl.sh  service.sh  action.sh  uninstall.sh  customize.sh
+module.prop  ctl.sh  service.sh  uninstall.sh  customize.sh
 webroot/index.html
 ```
 
@@ -75,10 +74,10 @@ adb shell su -c "apd module install /sdcard/Download/adb_tcpip_sw-v1.0.0.zip"
 ## 使用
 
 - **WebUI**：模块详情页点开网页 → 大开关、手机 IP、端口、实际监听状态、一键复制 `adb connect` 命令、改端口。
-- **Action 按钮**：Manager 里点 Action 直接翻转开关，不用进网页。
 - **命令行**：`adb shell su -c "sh /data/adb/modules/adb_tcpip_sw/ctl.sh on|off|status|setport 5555"`
+- **模块列表徽章**：Manager 的模块列表里直接显示 `[🟢 ON · ✅ :5555 listening]`，状态一变就更新（改写 `module.prop` 的 description，仅在文本变化时落盘）。
 
-状态存在 `state` 文件里，**重启后按上次状态自动恢复**（on 才监听）。
+状态存在 `state` 文件里，**重启后按上次状态自动恢复**（on 才监听）。开关只通过 WebUI（或命令行）控制，Manager 的 Action 按钮不提供。
 
 ## WebUI 机制（写页面时用到的）
 
