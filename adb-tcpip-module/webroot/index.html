@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>ADB 无线调试</title>
+<link rel="stylesheet" type="text/css" href="/internal/insets.css" />
+<style>
+    :root {
+        --bg: #0e1014;
+        --card: #171a20;
+        --text: #e8eaed;
+        --muted: #9aa0a6;
+        --accent: #34d399;
+        --accent-2: #10b981;
+        --danger: #f87171;
+        --border: rgba(255, 255, 255, .08);
+        --tile: rgba(255, 255, 255, .04);
+        --sw-off: #3a3f4b;
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --text: #1a1c1f;
+            --muted: #6b7280;
+            --border: rgba(0, 0, 0, .08);
+            --tile: rgba(0, 0, 0, .03);
+            --sw-off: #cbd0d8;
+        }
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+        padding-top: var(--window-inset-top, env(safe-area-inset-top, 0px));
+        padding-bottom: calc(24px + var(--window-inset-bottom, env(safe-area-inset-bottom, 0px)));
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .page { max-width: 640px; margin: 0 auto; padding: 16px 16px 0; }
+
+    header { padding: 8px 4px 18px; }
+    header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.3px; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 13.5px; }
+
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 12px;
+    }
+
+    .row { display: flex; align-items: center; gap: 16px; }
+    .row .grow { flex: 1 1 auto; min-width: 0; }
+    .row h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    .row .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+    .sw {
+        flex: 0 0 auto;
+        width: 58px; height: 34px;
+        border: 0; border-radius: 999px;
+        background: var(--sw-off);
+        position: relative;
+        transition: background .25s ease;
+        cursor: pointer;
+        padding: 0;
+    }
+    .sw .knob {
+        position: absolute; top: 3px; left: 3px;
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #fff;
+        transition: transform .25s cubic-bezier(.4, 0, .2, 1);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+    }
+    .sw.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+    .sw.on .knob { transform: translateX(24px); }
+    .sw:disabled { opacity: .45; cursor: default; }
+
+    .cmd {
+        display: flex; align-items: center; gap: 10px;
+        margin-top: 16px; padding: 11px 12px;
+        background: var(--tile);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 13px;
+        word-break: break-all;
+    }
+    .cmd .text { flex: 1 1 auto; color: var(--muted); }
+    .cmd.on .text { color: var(--text); }
+    .copy {
+        flex: 0 0 auto;
+        border: 0; border-radius: 9px;
+        padding: 6px 12px;
+        background: var(--accent); color: #06281d;
+        font-size: 13px; font-weight: 600;
+        cursor: pointer;
+    }
+    .copy:active { opacity: .8; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .tile {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 13px 14px;
+    }
+    .tile .k { font-size: 12px; color: var(--muted); }
+    .tile .v { margin-top: 3px; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .tile .v.ok { color: var(--accent); }
+    .tile .v.off { color: var(--muted); }
+
+    .field { display: flex; gap: 10px; align-items: center; }
+    .field input {
+        flex: 1 1 auto;
+        background: var(--tile);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        color: var(--text);
+        padding: 10px 12px;
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+    }
+    .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    .btn {
+        flex: 0 0 auto;
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        background: var(--tile);
+        color: var(--text);
+        padding: 10px 16px;
+        font-size: 14px; font-weight: 600;
+        cursor: pointer;
+    }
+    .btn:active { opacity: .7; }
+
+    .label { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+
+    .msg { margin-top: 12px; font-size: 13px; color: var(--muted); min-height: 20px; }
+    .msg.err { color: var(--danger); }
+    .msg.ok { color: var(--accent); }
+
+    pre.log {
+        background: var(--tile);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        margin: 0 0 12px;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 160px;
+        overflow: auto;
+    }
+
+    footer { padding: 4px 4px 0; font-size: 12px; color: var(--muted); }
+    footer code { font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+    .banner {
+        background: rgba(248, 113, 113, .12);
+        border: 1px solid rgba(248, 113, 113, .35);
+        color: var(--danger);
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+</style>
+</head>
+<body>
+<div class="page">
+    <header>
+        <h1>ADB 无线调试</h1>
+        <p>开关打开时 adbd 才监听 TCP 端口，关闭即彻底停止监听。</p>
+    </header>
+
+    <div id="banner" class="banner" style="display:none">
+        未检测到宿主注入的 root 接口。请在 APatch Manager 的模块页点开本页，而不是用普通浏览器。
+    </div>
+
+    <section class="card">
+        <div class="row">
+            <div class="grow">
+                <h2 id="swTitle">监听端口</h2>
+                <p class="sub" id="swSub">读取中…</p>
+            </div>
+            <button class="sw" id="sw" role="switch" aria-checked="false" aria-label="切换监听">
+                <span class="knob"></span>
+            </button>
+        </div>
+        <div class="cmd" id="cmdBox">
+            <span class="text" id="cmdText">—</span>
+            <button class="copy" id="copyBtn">复制</button>
+        </div>
+        <div class="msg" id="msg"></div>
+    </section>
+
+    <div class="grid">
+        <div class="tile">
+            <div class="k">手机 IP（wlan0）</div>
+            <div class="v" id="vIp">—</div>
+        </div>
+        <div class="tile">
+            <div class="k">端口</div>
+            <div class="v" id="vPort">—</div>
+        </div>
+        <div class="tile">
+            <div class="k">实际监听</div>
+            <div class="v" id="vListen">—</div>
+        </div>
+        <div class="tile">
+            <div class="k">开机恢复</div>
+            <div class="v" id="vBoot">—</div>
+        </div>
+    </div>
+
+    <section class="card">
+        <p class="label">监听端口（1024–65535，修改后需重启 adbd 生效）</p>
+        <div class="field">
+            <input id="portInput" type="text" inputmode="numeric" value="5555" />
+            <button class="btn" id="saveBtn">保存</button>
+        </div>
+        <div class="msg" id="portMsg"></div>
+    </section>
+
+    <section class="card">
+        <p class="label">最近日志（模块内 ctl.sh 输出）</p>
+        <pre class="log" id="log">—</pre>
+        <button class="btn" id="refreshBtn">刷新状态</button>
+    </section>
+
+    <footer>
+        模块目录 <code>/data/adb/modules/adb_tcpip_sw</code> · 控制脚本 <code>ctl.sh</code>
+    </footer>
+</div>
+
+<script>
+(function () {
+    var MOD = "/data/adb/modules/adb_tcpip_sw";
+    var CTL = "sh " + MOD + "/ctl.sh";
+    var K = window.ksu || window.apatch || null;
+
+    var $ = function (id) { return document.getElementById(id); };
+    var sw = $("sw"), msg = $("msg"), cur = null, busy = false;
+
+    if (!K) {
+        $("banner").style.display = "block";
+        sw.disabled = true;
+        $("swSub").textContent = "无法执行命令";
+        return;
+    }
+
+    // Host bridge is callback-style (KernelSU/APatch convention):
+    //   ksu.exec(cmd, callbackFuncName)  or  ksu.exec(cmd, optionsJson, callbackFuncName)
+    // callback receives (errno, stdout, stderr). Some hosts may return a
+    // Promise or a plain result object instead - all three are handled here.
+    var cbSeq = 0;
+
+    function normalize(r) {
+        if (r == null) return null;
+        if (typeof r === "string") {
+            try { r = JSON.parse(r); } catch (e) { return { errno: 0, stdout: r, stderr: "" }; }
+        }
+        if (typeof r === "object") {
+            return {
+                errno: r.errno != null ? r.errno : (r.code != null ? r.code : 0),
+                stdout: r.stdout != null ? r.stdout : (r.out != null ? r.out : ""),
+                stderr: r.stderr != null ? r.stderr : (r.err != null ? r.err : "")
+            };
+        }
+        return null;
+    }
+
+    function sh(cmd) {
+        return new Promise(function (resolve, reject) {
+            var done = false, timer = null;
+            var cbName = "__sw_cb_" + (++cbSeq);
+
+            function finish(r) {
+                if (done) return;
+                done = true;
+                if (timer) clearTimeout(timer);
+                try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+                var n = normalize(r);
+                if (n) resolve(n); else reject(new Error("exec 返回无法解析"));
+            }
+
+            window[cbName] = function (errno, stdout, stderr) {
+                finish({ errno: errno, stdout: stdout, stderr: stderr });
+            };
+
+            function guard(p) {
+                if (p && typeof p.then === "function") {
+                    p.then(finish, function (e) {
+                        if (!done) { done = true; reject(e); }
+                    });
+                    return true;
+                }
+                if (p != null) { finish(p); return true; }
+                return false;
+            }
+
+            try { guard(K.exec(cmd, cbName)); } catch (e1) { }
+            if (!done) {
+                try { guard(K.exec(cmd, "{}", cbName)); } catch (e2) { }
+            }
+
+            timer = setTimeout(function () {
+                if (!done) reject(new Error("exec 5 秒无响应（回调未被调用）"));
+            }, 5000);
+        });
+    }
+
+    function parseStatus(res) {
+        if (res.errno !== 0 && !res.stdout) throw new Error(res.stderr || "errno " + res.errno);
+        var line = String(res.stdout || "").trim().split("\n").pop();
+        return JSON.parse(line);
+    }
+
+    function setMsg(el, text, kind) {
+        el.textContent = text || "";
+        el.className = "msg" + (kind ? " " + kind : "");
+    }
+
+    function render(s) {
+        cur = s;
+        var on = s.state === "on";
+        sw.classList.toggle("on", on);
+        sw.setAttribute("aria-checked", on ? "true" : "false");
+
+        $("swTitle").textContent = on ? "监听中" : "已停止监听";
+        $("swSub").textContent = on
+            ? "TCP " + s.port + " 已开启，可在电脑上 adb connect"
+            : "当前仅 USB 调试可用，端口不对外监听";
+        $("cmdText").textContent = s.cmd;
+        $("cmdBox").classList.toggle("on", on);
+
+        $("vIp").textContent = s.ip;
+        $("vIp").className = "v" + (s.ip !== "0.0.0.0" ? " ok" : " off");
+        $("vPort").textContent = s.port;
+        $("vListen").textContent = s.listening ? "是" : "否";
+        $("vListen").className = "v " + (s.listening ? "ok" : "off");
+        $("vBoot").textContent = on ? "开机自动开" : "开机不开";
+        $("vBoot").className = "v " + (on ? "ok" : "off");
+
+        if (document.activeElement !== $("portInput")) $("portInput").value = s.port;
+    }
+
+    function run(cmd, okText) {
+        busy = true;
+        sw.disabled = true;
+        setMsg(msg, "执行中…");
+        return sh(cmd).then(function (res) {
+            var s = parseStatus(res);
+            render(s);
+            setMsg(msg, okText, "ok");
+            $("log").textContent = (res.stdout || "") + (res.stderr || "");
+        }).catch(function (e) {
+            setMsg(msg, "失败：" + (e && e.message ? e.message : e), "err");
+        }).then(function () {
+            busy = false;
+            sw.disabled = false;
+        });
+    }
+
+    sw.addEventListener("click", function () {
+        if (busy) return;
+        var next = !(cur && cur.state === "on");
+        run(CTL + " " + (next ? "on" : "off"),
+            next ? "已开启：" + (cur ? cur.cmd : "") : "已关闭，端口不再监听");
+    });
+
+    $("copyBtn").addEventListener("click", function () {
+        var text = cur ? cur.cmd : "";
+        if (!text) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+                setMsg(msg, "已复制：" + text, "ok");
+            }, function () { legacyCopy(text); });
+        } else {
+            legacyCopy(text);
+        }
+    });
+
+    function legacyCopy(t) {
+        var ta = document.createElement("textarea");
+        ta.value = t;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand("copy"); } catch (e) { }
+        document.body.removeChild(ta);
+        setMsg(msg, ok ? "已复制：" + t : "复制失败，请手动选择", ok ? "ok" : "err");
+    }
+
+    $("saveBtn").addEventListener("click", function () {
+        var p = $("portInput").value.trim();
+        if (!/^\d+$/.test(p)) { setMsg($("portMsg"), "端口必须是数字", "err"); return; }
+        if (+p < 1024 || +p > 65535) { setMsg($("portMsg"), "范围 1024–65535", "err"); return; }
+        setMsg($("portMsg"), "保存中…");
+        busy = true; sw.disabled = true;
+        sh(CTL + " setport " + p).then(function (res) {
+            var s = parseStatus(res);
+            render(s);
+            setMsg($("portMsg"), "端口已改为 " + s.port, "ok");
+            $("log").textContent = (res.stdout || "") + (res.stderr || "");
+        }).catch(function (e) {
+            setMsg($("portMsg"), "失败：" + (e && e.message ? e.message : e), "err");
+        }).then(function () { busy = false; sw.disabled = false; });
+    });
+
+    $("refreshBtn").addEventListener("click", function () {
+        if (busy) return;
+        busy = true;
+        setMsg(msg, "刷新中…");
+        sh(CTL + " status").then(function (res) {
+            render(parseStatus(res));
+            setMsg(msg, "");
+        }).catch(function (e) {
+            setMsg(msg, "失败：" + (e && e.message ? e.message : e), "err");
+        }).then(function () { busy = false; });
+    });
+
+    sh(CTL + " status").then(function (res) {
+        render(parseStatus(res));
+    }).catch(function (e) {
+        setMsg(msg, "读取状态失败：" + (e && e.message ? e.message : e), "err");
+    });
+})();
+</script>
+</body>
+</html>

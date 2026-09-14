@@ -1,0 +1,8 @@
+# Android/Shell scripts MUST stay LF - a CRLF .sh file makes `sh` fail with
+# syntax errors near \r once it is pushed to the device.
+*.sh    text eol=lf
+*.prop  text eol=lf
+*.py    text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+*.ps1   text eol=crlf

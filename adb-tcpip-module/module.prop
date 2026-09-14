@@ -1,0 +1,6 @@
+id=adb_tcpip_sw
+name=ADB TCP/IP Switch
+version=v1.0.0
+versionCode=100
+author=ENI
+description=WebUI switch for adb wireless debugging. Listens on TCP port only when enabled.

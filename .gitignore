@@ -1,0 +1,15 @@
+# local / private
+.workbuddy/
+screen*.png
+*.log
+
+# build output - published as a GitHub release asset instead
+dist/
+
+# python
+__pycache__/
+*.pyc
+
+# legacy standalone scripts, superseded by the module
+adb-tcpip.sh
+uninstall-adb-tcpip.sh
