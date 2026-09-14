@@ -54,16 +54,12 @@ update_desc() {
     [ -f "$MODDIR/module.prop" ] || return 0
     ST=$(cat "$STATE_FILE" 2>/dev/null)
     [ -n "$ST" ] || ST=off
-    if [ "$ST" = "on" ]; then
-        if is_listening; then
-            BADGE="[🟢 ON · ✅ :${PORT} listening]"
-        else
-            BADGE="[🟢 ON · ⏳ :${PORT} not listening yet]"
-        fi
+    if [ "$ST" = "on" ] && is_listening; then
+        BADGE="[${PORT} ✅]"
     else
-        BADGE="[⚫ OFF · :${PORT} closed]"
+        BADGE="[${PORT} ❌]"
     fi
-    NEW="description=${BADGE} WebUI switch for adb wireless debugging. TCP listens only while enabled."
+    NEW="description=${BADGE}"
     # write only when changed, so a periodic sync loop causes no flash wear
     CUR=$(sed -n 's/^description=//p' "$MODDIR/module.prop" 2>/dev/null)
     [ "$CUR" = "${NEW#description=}" ] && return 0
