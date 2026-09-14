@@ -100,7 +100,8 @@
     .knob { display: flex; align-items: center; justify-content: center; }
 
     .bar {
-        position: fixed; top: 0; left: 0; right: 0; height: 3px;
+        position: fixed; left: 0; right: 0; height: 4px;
+        top: var(--window-inset-top, env(safe-area-inset-top, 0px));
         overflow: hidden; z-index: 50;
         opacity: 0; transition: opacity .2s ease;
         pointer-events: none;
@@ -275,7 +276,7 @@
     </section>
 
     <footer>
-        模块目录 <code>/data/adb/modules/adb_tcpip_sw</code> · 控制脚本 <code>ctl.sh</code>
+        模块目录 <code>/data/adb/modules/adb_tcpip_sw</code> · 控制脚本 <code>ctl.sh</code> · UI v3
     </footer>
 </div>
 
@@ -356,6 +357,19 @@
         });
     }
 
+    // Give the browser two frames to actually paint the busy state before the
+    // command runs: if the host bridge blocks the UI thread, an animation that
+    // was never painted is an animation you never see.
+    function execAfterPaint(cmd) {
+        return new Promise(function (resolve, reject) {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    sh(cmd).then(resolve, reject);
+                });
+            });
+        });
+    }
+
     function parseStatus(res) {
         if (res.errno !== 0 && !res.stdout) throw new Error(res.stderr || "errno " + res.errno);
         var line = String(res.stdout || "").trim().split("\n").pop();
@@ -379,6 +393,7 @@
     }
 
     function btnBusy(btn, on) {
+        btn.classList.toggle("busy", on);
         if (on) {
             if (btn.dataset.label == null) btn.dataset.label = btn.textContent;
             btn.textContent = "";
@@ -422,7 +437,7 @@
         setBusy(true);
         $("swSub").textContent = pendingText || "正在切换…";
         setMsg(msg, "");
-        return sh(cmd).then(function (res) {
+        return execAfterPaint(cmd).then(function (res) {
             var s = parseStatus(res);
             render(s);
             setMsg(msg, okText, "ok");
@@ -477,7 +492,7 @@
         setMsg($("portMsg"), "保存中…");
         busy = true; sw.disabled = true;
         setBusy(true); btnBusy(btn, true);
-        sh(CTL + " setport " + p).then(function (res) {
+        execAfterPaint(CTL + " setport " + p).then(function (res) {
             var s = parseStatus(res);
             render(s);
             setMsg($("portMsg"), "端口已改为 " + s.port, "ok");
@@ -496,7 +511,7 @@
         busy = true;
         setBusy(true); btnBusy(btn, true);
         setMsg(msg, "刷新中…");
-        sh(CTL + " status").then(function (res) {
+        execAfterPaint(CTL + " status").then(function (res) {
             render(parseStatus(res));
             setMsg(msg, "");
         }).catch(function (e) {
@@ -508,7 +523,7 @@
 
     // initial load also gets the progress bar, so a slow first read feels alive
     setBusy(true);
-    sh(CTL + " status").then(function (res) {
+    execAfterPaint(CTL + " status").then(function (res) {
         render(parseStatus(res));
     }).catch(function (e) {
         setMsg(msg, "读取状态失败：" + (e && e.message ? e.message : e), "err");
